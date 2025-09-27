@@ -1,0 +1,25 @@
+{
+  "typescript.preferences.preferTypeOnlyAutoImports": true,
+  "typescript.suggest.autoImports": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+  "github.copilot.enable": {
+    "*": true,
+    "plaintext": false,
+    "markdown": true,
+    "typescript": true,
+    "html": true,
+    "css": true,
+    "scss": true
+  },
+  "github.copilot.editor.enableAutoCompletions": true,
+  "files.associations": {
+    "*.html": "html"
+  },
+  "angular.experimental-ivy": true,
+  "typescript.preferences.includePackageJsonAutoImports": "auto"
+}
