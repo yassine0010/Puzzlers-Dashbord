@@ -4,20 +4,20 @@ An Angular 20.3.0 admin dashboard for managing IEEE programming puzzlers competi
 
 ## 🚀 Features
 
-- **Puzzle Management**: Create, edit, and organize programming puzzles with images
-- **Tournament Management**: Set up tournaments and assign puzzles
-- **Real-time Updates**: Live tournament monitoring using SignalR
-- **User Management**: Track user performance and tournament participation
-- **Role-based Access**: PUZZLE_CREATOR, GAME_CREATOR, and Admin roles
+- **Puzzle Management**: Create, edit, view, and delete programming puzzles with images
+- **Image Upload**: Support for puzzle image uploads and management
+- **Difficulty Levels**: Easy, medium, and hard puzzle categorization
+- **Search & Filter**: Find puzzles by name, difficulty, or creator
+- **Role-based Access**: PUZZLE_CREATOR and Admin roles
 - **Responsive Design**: Mobile-friendly admin interface
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: Angular 20.3.0 with Standalone Components
-- **Backend**: .NET 8 Web API with SignalR
+- **Backend**: .NET 8 Web API
 - **Database**: SQL Server with Entity Framework Core
 - **Authentication**: JWT Bearer tokens
-- **Real-time**: SignalR for live updates
+- **File Upload**: Multipart form data for images
 - **UI Framework**: Angular Material (recommended)
 
 ## 🤖 AI Development Setup
@@ -81,8 +81,8 @@ src/
    // src/environments/environment.ts
    export const environment = {
      production: false,
-     apiUrl: "https://localhost:7000/api",
-     signalRUrl: "https://localhost:7000/communicationHub",
+     apiUrl: 'https://localhost:7000/api',
+     signalRUrl: 'https://localhost:7000/communicationHub',
    };
    ```
 
@@ -100,27 +100,25 @@ src/
 
 The dashboard uses JWT Bearer authentication with role-based authorization:
 
-- **PUZZLE_CREATOR**: Can create and manage puzzles
-- **GAME_CREATOR**: Can create tournaments and assign puzzles
-- **Admin**: Full administrative access
+- **PUZZLE_CREATOR**: Can create, edit, and manage their own puzzles
+- **Admin**: Full administrative access to all puzzles and user management
 
 ## 📋 API Integration
 
 Key endpoints from the .NET backend:
 
 ```typescript
-// Puzzles
-GET / api / Puzzels / GetAllPuzzles;
-POST / api / Puzzels / CreatePuzzle; // PUZZLE_CREATOR
-GET / api / Puzzels / GetPuzzleById / { id };
+// Puzzles CRUD
+GET / api / Puzzels / GetAllPuzzles; // List all puzzles with pagination
+POST / api / Puzzels / CreatePuzzle; // PUZZLE_CREATOR - Create puzzle
+GET / api / Puzzels / GetPuzzleById / { id }; // Get specific puzzle
+PUT / api / Puzzels / UpdatePuzzle / { id }; // PUZZLE_CREATOR - Update puzzle
+DELETE / api / Puzzels / DeletePuzzle / { id }; // Admin - Delete puzzle
 
-// Tournaments
-GET / api / Tournament / GetAllTournaments;
-POST / api / Tournament / CreateTournament; // GAME_CREATOR
-GET / api / Tournament / GetTournamentById / { id };
-
-// Tournament-Puzzle Management
-POST / api / TournamentPuzzle / AddPuzzleToTournament; // GAME_CREATOR
+// Authentication
+POST / api / Account / Login; // User login
+POST / api / Account / Register; // User registration
+POST / api / Account / RefreshToken; // Token refresh
 ```
 
 ## 🎯 Development Guidelines
@@ -129,10 +127,10 @@ POST / api / TournamentPuzzle / AddPuzzleToTournament; // GAME_CREATOR
 
 ```typescript
 // Use signals for state management
-import { Component, signal, computed } from "@angular/core";
+import { Component, signal, computed } from '@angular/core';
 
 @Component({
-  selector: "app-puzzle-list",
+  selector: 'app-puzzle-list',
   imports: [CommonModule],
   template: `
     @if (loading()) {
@@ -151,12 +149,12 @@ export class PuzzleListComponent {
 ### Service Pattern
 
 ```typescript
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class PuzzleService {
   private http = inject(HttpClient);
 
   getPuzzles() {
-    return this.http.get<Puzzle[]>("/api/Puzzels/GetAllPuzzles");
+    return this.http.get<Puzzle[]>('/api/Puzzels/GetAllPuzzles');
   }
 }
 ```

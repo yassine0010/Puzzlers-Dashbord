@@ -8,29 +8,37 @@ This file provides context and guidelines for AI assistants when working on this
 
 This is an **IEEE Puzzlers Admin Dashboard** built with Angular 20.3.0 that manages:
 
-### Backend API (.NET 8 with SignalR)
+### Brand Colors & Design System
+
+- **Blue Dark**: `#0469DD`
+- **Blue Cyan**: `#029FD3` 
+- **White**: `#FFFFFF` 
+- **Mild Green**: `#77BD43` 
+- **Deep Green**: `#158D45` 
+### Brand Assets
+
+- **Logo (Light)**: `/assets/blanc.png` - Use on dark backgrounds
+- **Logo (Main)**: `/assets/Groupe 170.png` - Primary logo for light backgrounds
+- **Favicon**: `/public/favicon.ico` - Browser tab icon
+
+### Backend API (.NET 8)
 
 - **Base URL**: Configure in environment files (never hardcode)
 - **Authentication**: JWT Bearer tokens with role-based authorization
-- **Real-time**: SignalR hub for live tournament updates
-- **Roles**: `PUZZLE_CREATOR`, `GAME_CREATOR`, `Admin`
+- **Roles**: `PUZZLE_CREATOR`, `Admin`
 
 ### Core Entities
 
-- **Puzzles**: Name, Image (byte[]), Solution, DifficultyLevel (easy/medium/hard)
-- **Tournaments**: Name, Password, PuzzleCount, associated puzzles
-- **Users**: ASP.NET Identity with custom Performance tracking
-- **Performance**: User tournament participation and solved count tracking
-- **Tournament_Puzzle**: Many-to-many relationship between tournaments and puzzles
+- **Puzzles**: Name, Description, Image (byte[]), Solution, DifficultyLevel (easy/medium/hard)
+- **Users**: ASP.NET Identity with puzzle creation tracking
 
 ### Key API Endpoints
 
-- `GET /api/Puzzels/GetAllPuzzles` - List all puzzles
+- `GET /api/Puzzels/GetAllPuzzles` - List all puzzles with pagination
 - `POST /api/Puzzels/CreatePuzzle` - Create new puzzle (PUZZLE_CREATOR)
-- `GET /api/Tournament/GetAllTournaments` - List tournaments
-- `POST /api/Tournament/CreateTournament` - Create tournament (GAME_CREATOR)
-- `POST /api/TournamentPuzzle/AddPuzzleToTournament` - Assign puzzle to tournament
-- **SignalR Hub**: `/communicationHub` for real-time tournament updates
+- `GET /api/Puzzels/GetPuzzleById/{id}` - Get specific puzzle
+- `PUT /api/Puzzels/UpdatePuzzle/{id}` - Update puzzle (PUZZLE_CREATOR)
+- `DELETE /api/Puzzels/DeletePuzzle/{id}` - Delete puzzle (Admin)
 
 ## TypeScript Best Practices
 
@@ -106,19 +114,14 @@ This is an **IEEE Puzzlers Admin Dashboard** built with Angular 20.3.0 that mana
     name: string;
     image: File;
     solution: string;
-    difficultyLevel: "easy" | "medium" | "hard";
+    difficultyLevel: 'easy' | 'medium' | 'hard';
   }
   ```
 - Handle file uploads for puzzle images with proper validation
 - Implement proper loading states for CRUD operations
 - Use optimistic updates for better UX where appropriate
 
-### Real-time Features
 
-- Implement SignalR connection service for tournament updates
-- Handle connection states (connecting, connected, reconnecting, disconnected)
-- Provide fallback mechanisms when real-time connection fails
-- Use signals to manage real-time state updates
 
 ### UI/UX Patterns
 
@@ -172,7 +175,7 @@ src/
 - Always generate code that follows the above Angular best practices
 - When creating new components, always use standalone architecture
 - Generate tests alongside new components and services
-- Use modern Angular APIs (signals, new control flow, inject function)
+
 - Create proper TypeScript interfaces for all API interactions
 - Implement proper error handling and loading states
 - Follow consistent naming conventions (kebab-case for files, PascalCase for classes)
@@ -256,3 +259,16 @@ src/
 - Enable format-on-save with Prettier for consistent code style
 - Use TypeScript strict mode for better IntelliSense and error detection
 - Leverage Angular Language Service for template assistance
+
+## Enterprise Design Mandate (Summary)
+
+All UI contributions MUST reflect an extremely professional, company-grade standard:
+
+- Reuse design tokens (spacing 4px scale, defined typography sizes, semantic colors)
+- Neutral surfaces first; brand color only for emphasis & key actions
+- No emojis, playful gradients, or experimental visual styles
+- Maintain WCAG AA contrast & visible focus indicators
+- Limit visual noise (no gratuitous shadows, animations, or arbitrary new component variations)
+- Enforce consistent component patterns (buttons, forms, tables, dialogs)
+
+Refer to `.copilot/instructions.md` for the full detailed mandate and acceptance checklist.
