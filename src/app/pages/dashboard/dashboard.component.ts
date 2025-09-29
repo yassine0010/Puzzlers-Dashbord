@@ -89,6 +89,10 @@ import { UserItem, UsersService } from '../../core/services/users.service';
                   <div class="stat-number">{{ getMyPuzzles() }}</div>
                   <div class="stat-label">My Puzzles</div>
                 </div>
+                <div class="stat" *ngIf="isAdmin()">
+                  <div class="stat-number">{{ getUserCount() }}</div>
+                  <div class="stat-label">Total Users</div>
+                </div>
               </div>
             </div>
           </div>
@@ -518,7 +522,7 @@ import { UserItem, UsersService } from '../../core/services/users.service';
       }
       .btn.ghost {
         background: transparent;
-        border: 1px solid var(--surface-panel-border);
+        border: 1px solid var(--brand-blue-dark);
         color: var(--text-primary);
       }
 
