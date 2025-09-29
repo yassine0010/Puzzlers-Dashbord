@@ -7,14 +7,7 @@ import { AuthState, LoginRequest, UserInfo, UserRole } from '../../shared/models
 export class AuthService {
   private router = inject(Router);
 
-  // Static mock user data for puzzle management
-  private readonly MOCK_USER: UserInfo & { roles: UserRole[] } = {
-    id: '1',
-    email: 'admin@puzzlers.com',
-    userName: 'admin',
-    roles: ['Admin', 'PUZZLE_CREATOR'],
-  };
-
+  // Static mock token (no real auth yet)
   private readonly MOCK_TOKEN = 'mock-jwt-token-12345';
 
   // Reactive state using signals
@@ -56,31 +49,41 @@ export class AuthService {
 
     // Simulate API call with delay
     return of(null).pipe(
-      delay(1000), // Simulate network delay
+      delay(700), // Simulate network delay
       tap(() => {
-        // For static mode, accept any credentials
-        if (credentials.userName && credentials.password) {
-          // Update state with mock user
-          this.authState.update((state) => ({
-            ...state,
-            isAuthenticated: true,
-            user: this.MOCK_USER,
-            token: this.MOCK_TOKEN,
-            roles: this.MOCK_USER.roles,
-            loading: false,
-            error: null,
-          }));
-
-          // Navigate to dashboard
-          this.router.navigate(['/dashboard']);
-        } else {
-          // Show error for empty credentials
+        // Basic validation: require username and password
+        if (!credentials.userName || !credentials.password) {
           this.authState.update((state) => ({
             ...state,
             loading: false,
             error: 'Please enter valid username and password',
           }));
+          return;
         }
+
+        // Create a mock user based on username. 'admin' gets Admin role.
+        const isAdmin = credentials.userName.toLowerCase() === 'admin';
+        const roles: UserRole[] = isAdmin ? ['Admin', 'PUZZLE_CREATOR'] : ['PUZZLE_CREATOR'];
+        const mockUser: UserInfo & { roles: UserRole[] } = {
+          id: String(Date.now()),
+          email: `${credentials.userName}@example.com`,
+          userName: credentials.userName,
+          roles,
+        };
+
+        // Update state with mock user
+        this.authState.update((state) => ({
+          ...state,
+          isAuthenticated: true,
+          user: mockUser,
+          token: this.MOCK_TOKEN,
+          roles: mockUser.roles,
+          loading: false,
+          error: null,
+        }));
+
+        // Navigate to dashboard
+        this.router.navigate(['/dashboard']);
       })
     );
   }

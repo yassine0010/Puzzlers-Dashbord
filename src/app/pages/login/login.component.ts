@@ -271,9 +271,9 @@ import { ThemeService } from '../../core/services/theme.service';
         position: relative;
       }
       .alert-error {
-        background: #fff5f5;
-        border-color: #f9d2d2;
-        color: #b42323;
+        background: var(--surface-panel);
+        border-color: var(--surface-panel-border);
+        color: var(--color-error);
       }
       .alert-icon {
         font-weight: 700;
