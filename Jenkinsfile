@@ -1,0 +1,43 @@
+pipline {
+    agent any
+    environment {
+        PATH = "/usr/local/bin:${PATH}"
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out code...'
+                checkout scm
+            }
+        }
+        stage('Restore NPM cache') {
+            steps {
+                echo 'Restoring NPM cache...'
+                dir ("{$env.WORKSPACE}") {
+                    cache(maxCacheSize: 1, caches: [[path : '.npm']]) {
+                        echo 'NPM cache restored'
+                    }
+                }
+            }
+        }
+        stage("install dependencies") {
+            steps {
+                echo 'Installing dependencies...'
+                sh 'npm ci --cache .npm'
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Building...'
+                sh 'npx ng build'
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Testing...'
+                sh 'npx ng test --watch=false --browsers=ChromeHeadlessCI'
+            }
+        }
+
+    }
+}
