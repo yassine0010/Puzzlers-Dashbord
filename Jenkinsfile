@@ -10,7 +10,7 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Restore NPM cache') {
+     /*   stage('Restore NPM cache') {
             steps {
                 echo 'Restoring NPM cache...'
                 dir ("{$env.WORKSPACE}") {
@@ -19,11 +19,12 @@ pipeline {
                     }
                 }
             }
-        }
+        }*/
         stage("install dependencies") {
             steps {
                 echo 'Installing dependencies...'
-                sh 'npm ci --cache .npm'
+              //  sh 'npm ci --cache .npm'
+                sh 'npm ci'
             }
         }
         stage('Build') {
