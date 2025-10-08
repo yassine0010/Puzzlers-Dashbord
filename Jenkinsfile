@@ -18,7 +18,8 @@ pipeline {
                 sh 'npm ci --prefer-offline'
             }
         }
-        parallel { //imrove speed by running build and test in parallel
+        stage ('test and building'){
+            parallel { //imrove speed by running build and test in parallel
                 stage('Build') {
                     steps {
                         echo 'Building...'
@@ -32,6 +33,8 @@ pipeline {
                     }
                 }
             }
+        }
+
         }
         post {
         success {
