@@ -15,7 +15,7 @@ pipeline {
             steps {
                 echo 'Installing dependencies...'
               //  sh 'npm ci --cache .npm'
-                sh 'npm ci --prefer-offline'
+                sh 'npm ci --prefer-offline --legacy-peer-deps'
             }
         }
         stage ('test and building'){
