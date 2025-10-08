@@ -1,7 +1,7 @@
 pipeline {
     agent any
     tools {
-        nodejs  'nodejs'
+        nodejs  'nodejs' //'nodejs' heya el enviroment path
     }
     stages {
         stage('Checkout') {
@@ -10,21 +10,12 @@ pipeline {
                 checkout scm
             }
         }
-     /*   stage('Restore NPM cache') {
-            steps {
-                echo 'Restoring NPM cache...'
-                dir ("{$env.WORKSPACE}") {
-                    cache(maxCacheSize: 1, caches: [[path : '.npm']]) {
-                        echo 'NPM cache restored'
-                    }
-                }
-            }
-        }*/
+
         stage("install dependencies") {
             steps {
                 echo 'Installing dependencies...'
               //  sh 'npm ci --cache .npm'
-                sh 'npm ci'
+                sh 'npm ci --prefer-offline'
             }
         }
         stage('Build') {
@@ -36,7 +27,7 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Testing...'
-                sh 'npx ng test --watch=false --browsers=ChromeHeadlessCI'
+                sh 'npx ng test '
             }
         }
 
