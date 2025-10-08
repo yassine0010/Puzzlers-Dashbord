@@ -19,7 +19,7 @@ pipeline {
             }
         }
         stage ('test and building'){
-            parallel { //imrove speed by running build and test in parallel
+            parallel { //imrove speed by running buil d and test in parallel
                 stage('Build') {
                     steps {
                         echo 'Building...'
