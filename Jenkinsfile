@@ -10,35 +10,34 @@ pipeline {
                 checkout scm
             }
         }
-     /*   stage('Restore NPM cache') {
-            steps {
-                echo 'Restoring NPM cache...'
-                dir ("{$env.WORKSPACE}") {
-                    cache(maxCacheSize: 1, caches: [[path : '.npm']]) {
-                        echo 'NPM cache restored'
-                    }
-                }
-            }
-        }*/
+
         stage("install dependencies") {
             steps {
                 echo 'Installing dependencies...'
-              //  sh 'npm ci --cache .npm'
                 sh 'npm ci'
             }
         }
-        stage('Build') {
-            steps {
-                echo 'Building...'
-                sh 'npx ng build'
+        parallel { //imrove speed by running build and test in parallel
+                stage('Build') {
+                    steps {
+                        echo 'Building...'
+                        sh 'npx ng build'
+                    }
+            }
+                stage('Test') {
+                    steps {
+                        echo 'Testing...'
+                        sh 'npm test' 
+                    }
+                }
             }
         }
-        stage('Test') {
-            steps {
-                echo 'Testing...'
-                sh 'npx ng test --watch=false --browsers=ChromeHeadlessCI'
-            }
+        post {
+        success {
+            echo 'Pipeline succeeded!'
         }
-
+        failure {
+            echo 'Pipeline failed!'
+        }
     }
 }
