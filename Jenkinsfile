@@ -1,7 +1,7 @@
 pipeline {
     agent any
-    environment {
-        PATH = "/usr/local/bin:${PATH}"
+    tools {
+        nodejs  'nodejs' //'nodejs' heya el enviroment path
     }
     stages {
         stage('Checkout') {
@@ -14,7 +14,8 @@ pipeline {
         stage("install dependencies") {
             steps {
                 echo 'Installing dependencies...'
-                sh 'npm ci'
+              //  sh 'npm ci --cache .npm'
+                sh 'npm ci --prefer-offline'
             }
         }
         parallel { //imrove speed by running build and test in parallel
