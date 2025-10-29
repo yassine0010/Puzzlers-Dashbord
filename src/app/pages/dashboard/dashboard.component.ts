@@ -1,10 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject, OnDestroy, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { of } from 'rxjs';
+import { catchError, finalize, switchMap } from 'rxjs/operators';
 import { AuthService } from '../../core/services/auth.service';
 import { PuzzleItem, PuzzlesService } from '../../core/services/puzzles.service';
-import { UserItem, UsersService } from '../../core/services/users.service';
+import { AdminUserSummary } from '../../shared/models/auth.models';
 
 @Component({
   selector: 'app-dashboard',
@@ -41,86 +43,87 @@ import { UserItem, UsersService } from '../../core/services/users.service';
               [routerLinkActiveOptions]="{ exact: true }"
               >Overview</a
             >
-            <a
-              *ngIf="isAdmin()"
-              class="nav-link"
-              routerLink="/dashboard"
-              routerLinkActive="active"
-              [routerLinkActiveOptions]="{ exact: true }"
-              >Users</a
-            >
             <a class="nav-link" routerLink="/settings" routerLinkActive="active">Settings</a>
           </nav>
         </aside>
 
         <section class="dash-content">
-          <!-- Delete confirmation modal (fixed overlay) -->
-          <div
-            class="confirm-overlay"
-            *ngIf="deleteTarget"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="confirm-title"
-            aria-describedby="confirm-desc"
-          >
-            <div class="confirm-card card" id="confirm-dialog">
-              <h4 id="confirm-title">Confirm delete</h4>
-              <p id="confirm-desc">Are you sure you want to delete "{{ deleteTarget.name }}"?</p>
-              <div class="confirm-actions">
-                <button id="delete-cancel-btn" class="btn ghost" (click)="cancelDelete()">
-                  Cancel
-                </button>
-                <button class="btn" (click)="doDelete()">Delete</button>
-              </div>
-            </div>
-          </div>
           <div class="hero card">
             <div class="hero-left">
               <h2>Hello {{ auth.user()?.userName }},</h2>
               <p class="muted">Quick actions and overview of your workspace</p>
             </div>
-            <div class="hero-right">
+            <div class="hero-right" *ngIf="isAdmin()">
               <div class="stats">
                 <div class="stat">
-                  <div class="stat-number">{{ getPuzzleCount() }}</div>
-                  <div class="stat-label">Total Puzzles</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-number">{{ getMyPuzzles() }}</div>
-                  <div class="stat-label">My Puzzles</div>
-                </div>
-                <div class="stat" *ngIf="isAdmin()">
                   <div class="stat-number">{{ getUserCount() }}</div>
                   <div class="stat-label">Total Users</div>
                 </div>
               </div>
             </div>
           </div>
-
           <div *ngIf="isAdmin()" class="admin-panel">
             <div class="card">
               <div class="card-header">
                 <h3>Manage Users</h3>
-                <div>
-                  <input placeholder="Name" [(ngModel)]="newUserName" />
-                  <input placeholder="Email" [(ngModel)]="newUserEmail" />
-                  <button class="btn" (click)="createUser()">New User</button>
-                </div>
               </div>
+              <div class="admin-form">
+                <input
+                  placeholder="Username"
+                  [(ngModel)]="newUserName"
+                  (ngModelChange)="resetAdminMessages()"
+                />
+                <div class="password-field">
+                  <input
+                    [type]="showAdminPassword() ? 'text' : 'password'"
+                    placeholder="Password"
+                    [(ngModel)]="newUserPassword"
+                    (ngModelChange)="resetAdminMessages()"
+                  />
+                  <button
+                    type="button"
+                    class="toggle-pass"
+                    (click)="toggleAdminPassword()"
+                    [attr.aria-label]="showAdminPassword() ? 'Hide password' : 'Show password'"
+                  >
+                    {{ showAdminPassword() ? 'Hide' : 'Show' }}
+                  </button>
+                </div>
+                <select [(ngModel)]="newUserRole" (ngModelChange)="resetAdminMessages()">
+                  <option value="GAME_CREATOR">Game Creator</option>
+                  <option value="PUZZLE_CREATOR">Puzzle Creator</option>
+                  <option value="GAMER">Gamer</option>
+                </select>
+                <button class="btn" (click)="createUser()" [disabled]="creatingUser()">
+                  {{ creatingUser() ? 'Creating...' : 'Add User' }}
+                </button>
+              </div>
+              <div class="policy-hint">
+                Username must use letters and digits only (no spaces or symbols). Password requires
+                uppercase, lowercase, number, and symbol.
+              </div>
+              <div *ngIf="userFormError() as error" class="field-error">{{ error }}</div>
+              <div *ngIf="userFormMessage() as message" class="success-msg">{{ message }}</div>
+
               <ul class="user-list">
-                <li *ngFor="let u of users()">
+                <li *ngFor="let user of users()">
                   <div class="user-info">
-                    <div class="uname">{{ u.userName }}</div>
-                    <div class="uemail">{{ u.email }}</div>
+                    <div class="uname">{{ user.userName }}</div>
+                    <div class="muted">{{ (user.roles || []).join(', ') }}</div>
                   </div>
-                  <div class="user-actions">
-                    <button class="btn ghost" (click)="removeUser(u.id)">Delete</button>
-                  </div>
+                  <button
+                    type="button"
+                    class="btn ghost small"
+                    (click)="deleteUser(user)"
+                    [disabled]="deletingUserId() === user.id"
+                  >
+                    {{ deletingUserId() === user.id ? 'Deleting…' : 'Delete' }}
+                  </button>
                 </li>
               </ul>
+              <div *ngIf="users().length === 0" class="muted">No users yet.</div>
             </div>
           </div>
-
           <div *ngIf="!isAdmin()" class="creator-panel">
             <div class="card">
               <h3>Create a New Puzzle</h3>
@@ -128,10 +131,10 @@ import { UserItem, UsersService } from '../../core/services/users.service';
                 <input
                   placeholder="Name"
                   [(ngModel)]="newPuzzleName"
-                  (ngModelChange)="newPuzzleNameError = false"
+                  (ngModelChange)="newPuzzleNameError = false; resetPuzzleMessages()"
                   required
                 />
-                <select [(ngModel)]="newPuzzleDifficulty">
+                <select [(ngModel)]="newPuzzleDifficulty" (ngModelChange)="resetPuzzleMessages()">
                   <option value="easy">Easy</option>
                   <option value="medium">Medium</option>
                   <option value="hard">Hard</option>
@@ -147,80 +150,140 @@ import { UserItem, UsersService } from '../../core/services/users.service';
                   (change)="onImageSelected($event)"
                 />
               </div>
+              <div *ngIf="newPuzzleImageError" class="field-error">Image is required</div>
+              <div *ngIf="puzzleFormError() as puzzleError" class="field-error">
+                {{ puzzleError }}
+              </div>
               <textarea
                 placeholder="Solution"
                 [(ngModel)]="newPuzzleSolution"
-                (ngModelChange)="newPuzzleSolutionError = false"
+                (ngModelChange)="newPuzzleSolutionError = false; resetPuzzleMessages()"
                 required
               ></textarea>
               <div *ngIf="newPuzzleSolutionError" class="field-error">Solution is required</div>
 
               <!-- Create button placed under the Solution field (green success style) -->
               <div style="margin-top:.75rem">
-                <button class="btn success" (click)="addPuzzle()">Create</button>
+                <button class="btn success" (click)="addPuzzle()" [disabled]="creatingPuzzle()">
+                  {{ creatingPuzzle() ? 'Creating...' : 'Create' }}
+                </button>
+              </div>
+              <div *ngIf="puzzleFormMessage() as puzzleMessage" class="success-msg">
+                {{ puzzleMessage }}
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h3>All Puzzles</h3>
+                <button
+                  type="button"
+                  class="btn ghost small"
+                  (click)="refreshAllPuzzles()"
+                  [disabled]="allPuzzlesLoading()"
+                >
+                  {{ allPuzzlesLoading() ? 'Refreshing…' : 'Refresh' }}
+                </button>
+              </div>
+              <div *ngIf="allPuzzlesError() as allError" class="field-error">
+                {{ allError }}
+              </div>
+              <div *ngIf="allPuzzlesLoading()" class="muted">Loading puzzles…</div>
+              <ul class="puzzle-list" *ngIf="!allPuzzlesLoading() && allPuzzles().length > 0">
+                <li *ngFor="let puzzle of allPuzzles()">
+                  <div class="p-info">
+                    <div class="uname">{{ puzzle.name }}</div>
+                    <div class="muted">
+                      Difficulty: {{ puzzle.difficultyLevel | titlecase }}
+                      <span *ngIf="puzzle.createdBy">
+                        • Creator: {{ getCreatorName(puzzle.createdBy) }}
+                      </span>
+                    </div>
+                    <div class="muted">Solution: {{ puzzle.solution }}</div>
+                  </div>
+                  <img
+                    *ngIf="puzzle.image"
+                    [src]="puzzle.image"
+                    alt="Puzzle preview"
+                    class="p-thumb"
+                    (click)="openLightbox(puzzle.image)"
+                  />
+                </li>
+              </ul>
+              <div
+                *ngIf="!allPuzzlesLoading() && allPuzzles().length === 0"
+                class="muted puzzle-empty"
+              >
+                No puzzles available yet.
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h3>Your Puzzles</h3>
+                <button
+                  type="button"
+                  class="btn ghost small"
+                  (click)="refreshCreatorPuzzles()"
+                  [disabled]="puzzlesLoading()"
+                >
+                  {{ puzzlesLoading() ? 'Refreshing…' : 'Refresh' }}
+                </button>
+              </div>
+              <div *ngIf="puzzlesError() as creatorError" class="field-error">
+                {{ creatorError }}
+              </div>
+              <div *ngIf="puzzlesLoading()" class="muted">Loading puzzles…</div>
+              <ul class="puzzle-list" *ngIf="!puzzlesLoading() && creatorPuzzles().length > 0">
+                <li *ngFor="let puzzle of creatorPuzzles()">
+                  <div class="p-info">
+                    <div class="uname">{{ puzzle.name }}</div>
+                    <div class="muted">Difficulty: {{ puzzle.difficultyLevel | titlecase }}</div>
+                    <div class="muted">Solution: {{ puzzle.solution }}</div>
+                  </div>
+                  <img
+                    *ngIf="puzzle.image"
+                    [src]="puzzle.image"
+                    alt="Puzzle preview"
+                    class="p-thumb"
+                    (click)="openLightbox(puzzle.image)"
+                  />
+                  <button
+                    type="button"
+                    class="btn ghost small"
+                    (click)="deleteCreatorPuzzle(puzzle)"
+                    [disabled]="deletingPuzzleId() === puzzle.id"
+                  >
+                    {{ deletingPuzzleId() === puzzle.id ? 'Deleting…' : 'Delete' }}
+                  </button>
+                </li>
+              </ul>
+              <div
+                *ngIf="!puzzlesLoading() && creatorPuzzles().length === 0"
+                class="muted puzzle-empty"
+              >
+                You have not created any puzzles yet.
               </div>
             </div>
           </div>
 
-          <!-- Puzzle list visible to all authenticated users -->
-          <div class="card">
-            <h3>Your Puzzles</h3>
-            <ul class="puzzle-list">
-              <li *ngFor="let p of puzzles()">
-                <!-- Display mode -->
-                <div *ngIf="editId !== p.id" class="p-item">
-                  <div class="p-meta">
-                    <div class="p-name">{{ p.name }}</div>
-                    <div class="p-diff muted">{{ p.difficultyLevel }}</div>
-                  </div>
-                  <div class="p-actions">
-                    <button class="btn" *ngIf="auth.canManagePuzzles()" (click)="startEdit(p)">
-                      Edit
-                    </button>
-                    <button
-                      class="btn ghost"
-                      *ngIf="auth.canManagePuzzles()"
-                      (click)="confirmDelete(p)"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Edit mode: shows inline form bound to editDraft -->
-                <div
-                  *ngIf="editId === p.id"
-                  class="card"
-                  style="padding:0.75rem;margin-bottom:0.5rem;"
-                >
-                  <div style="display:flex;gap:.5rem;align-items:center;">
-                    <input [(ngModel)]="editDraft!.name" placeholder="Name" />
-                    <select [(ngModel)]="editDraft!.difficultyLevel">
-                      <option value="easy">Easy</option>
-                      <option value="medium">Medium</option>
-                      <option value="hard">Hard</option>
-                    </select>
-                  </div>
-                  <div style="margin-top:.5rem">
-                    <textarea [(ngModel)]="editDraft!.solution" placeholder="Solution"></textarea>
-                  </div>
-                  <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.5rem">
-                    <button class="btn ghost" (click)="cancelEdit()">Cancel</button>
-                    <button class="btn" (click)="saveEdit()">Save</button>
-                  </div>
-                </div>
-
-                <!-- Image preview (only shown in display mode) -->
-                <div *ngIf="p.image && editId !== p.id" style="margin-top:8px;">
-                  <img
-                    [src]="p.image"
-                    alt="puzzle image"
-                    style="max-width:160px;border-radius:6px;border:1px solid var(--surface-panel-border)"
-                  />
-                </div>
-              </li>
-            </ul>
+          <div
+            *ngIf="lightboxImage() as activeImage"
+            class="puzzle-lightbox-backdrop"
+            (click)="closeLightbox()"
+          >
+            <img
+              [src]="activeImage"
+              alt="Puzzle"
+              class="puzzle-lightbox-image"
+              (click)="$event.stopPropagation()"
+            />
+            <button type="button" class="puzzle-lightbox-close" (click)="closeLightbox()">
+              &times;
+            </button>
           </div>
+
+          <!-- Creator puzzle list populated from backend -->
         </section>
       </div>
     </div>
@@ -252,6 +315,34 @@ import { UserItem, UsersService } from '../../core/services/users.service';
         padding: 1.25rem 1.5rem;
         background: linear-gradient(90deg, rgba(4, 105, 221, 0.04), transparent);
         border-bottom: 1px solid var(--surface-panel-border);
+      }
+      .admin-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+      .password-field {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+        max-width: 320px;
+      }
+      .password-field input {
+        flex: 1;
+        padding-right: 4.5rem;
+      }
+      .password-field .toggle-pass {
+        position: absolute;
+        right: 0.35rem;
+        background: transparent;
+        border: none;
+        color: var(--brand-blue-dark);
+        cursor: pointer;
+        padding: 0.25rem 0.55rem;
+        font-size: 0.85rem;
       }
       .brand h1 {
         margin: 0;
@@ -386,6 +477,63 @@ import { UserItem, UsersService } from '../../core/services/users.service';
         border-bottom: 1px dashed var(--surface-panel-border);
       }
 
+      .p-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+
+      .p-thumb {
+        width: 56px;
+        height: 56px;
+        object-fit: cover;
+        border-radius: 6px;
+        border: 1px solid var(--surface-panel-border);
+        cursor: pointer;
+      }
+
+      .puzzle-lightbox-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        z-index: 9999;
+      }
+
+      .puzzle-lightbox-image {
+        max-width: 90vw;
+        max-height: 85vh;
+        border-radius: 12px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+      }
+
+      .puzzle-lightbox-close {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        width: 38px;
+        height: 38px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.55);
+        color: var(--brand-white);
+        border: none;
+        font-size: 1.6rem;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+
+      .puzzle-empty {
+        text-align: center;
+        padding: 0.75rem 0;
+      }
+
       /* Puzzle item actions (Edit / Delete) should have some spacing */
       .p-actions {
         display: flex;
@@ -433,6 +581,16 @@ import { UserItem, UsersService } from '../../core/services/users.service';
         color: #c62828;
         font-size: 0.85rem;
         margin-top: 0.4rem;
+      }
+      .success-msg {
+        color: var(--color-success, #158d45);
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+      }
+      .policy-hint {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.35rem;
       }
 
       /* re-enable selection for form controls so users can copy/paste inside inputs */
@@ -525,6 +683,10 @@ import { UserItem, UsersService } from '../../core/services/users.service';
         border: 1px solid var(--brand-blue-dark);
         color: var(--text-primary);
       }
+      .btn.ghost.small {
+        padding: 0.35rem 0.6rem;
+        font-size: 0.85rem;
+      }
 
       @media (max-width: 880px) {
         .dash-body {
@@ -559,172 +721,448 @@ import { UserItem, UsersService } from '../../core/services/users.service';
     `,
   ],
 })
-export class DashboardComponent implements OnDestroy {
+export class DashboardComponent {
   protected auth = inject(AuthService);
-  protected usersService = inject(UsersService);
   protected puzzlesService = inject(PuzzlesService);
-
-  protected users = signal<UserItem[]>([]);
-  protected puzzles = signal<PuzzleItem[]>([]);
-
-  protected newUserName = '';
-  protected newUserEmail = '';
+  protected users = signal<AdminUserSummary[]>([]);
+  protected creatorPuzzles = signal<PuzzleItem[]>([]);
+  protected puzzlesLoading = signal(false);
+  protected puzzlesError = signal<string | null>(null);
+  protected allPuzzles = signal<PuzzleItem[]>([]);
+  protected allPuzzlesLoading = signal(false);
+  protected allPuzzlesError = signal<string | null>(null);
+  protected creatorNames = signal<Record<string, string>>({});
 
   // new puzzle fields matching backend model
   protected newPuzzleName = '';
   protected newPuzzleSolution = '';
   protected newPuzzleDifficulty: 'hard' | 'medium' | 'easy' = 'easy';
-  protected newPuzzleImageBase64?: string;
   protected newPuzzleNameError = false;
   protected newPuzzleSolutionError = false;
+  protected newPuzzleImageFile: File | null = null;
+  protected newPuzzleImageError = false;
+  protected creatingPuzzle = signal(false);
+  protected puzzleFormError = signal<string | null>(null);
+  protected puzzleFormMessage = signal<string | null>(null);
+  protected deletingPuzzleId = signal<string | null>(null);
+  protected lightboxImage = signal<string | null>(null);
+
+  // admin user form
+  protected newUserName = '';
+  protected newUserPassword = '';
+  protected newUserRole: 'PUZZLE_CREATOR' | 'GAME_CREATOR' | 'GAMER' = 'GAME_CREATOR';
+  protected creatingUser = signal(false);
+  protected userFormError = signal<string | null>(null);
+  protected userFormMessage = signal<string | null>(null);
+  protected deletingUserId = signal<string | null>(null);
+  private adminPasswordVisible = signal(false);
+  private readonly usernamePolicy = /^[A-Za-z0-9]+$/;
+  private readonly passwordPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+  private creatorPuzzlesLoadedFor: string | null = null;
+  private allPuzzlesLoaded = false;
 
   constructor() {
     // load initial data for authenticated users
     effect(() => {
-      if (this.auth.isAuthenticated()) {
-        // load users and puzzles when authenticated
-        this.usersService.list().subscribe((list) => this.users.set(list));
-        this.refreshPuzzles();
+      const authenticated = this.auth.isAuthenticated();
+      const currentUser = this.auth.user();
+      const admin = this.isAdmin();
+
+      if (!authenticated) {
+        this.users.set([]);
+        this.creatorPuzzles.set([]);
+        this.puzzlesError.set(null);
+        this.creatorPuzzlesLoadedFor = null;
+        this.allPuzzles.set([]);
+        this.allPuzzlesError.set(null);
+        this.allPuzzlesLoading.set(false);
+        this.allPuzzlesLoaded = false;
+        this.creatorNames.set({});
+        return;
+      }
+
+      const currentUserName = currentUser?.userName;
+      const currentUserId = currentUser?.id;
+      if (currentUserId && currentUserName) {
+        this.setCreatorName(currentUserId, currentUserName);
+      }
+
+      this.loadAllPuzzles();
+
+      if (admin) {
+        this.refreshUsers();
+        this.creatorPuzzles.set([]);
+        this.puzzlesError.set(null);
+        this.creatorPuzzlesLoadedFor = null;
+      } else {
+        this.users.set([]);
+        const creatorId = currentUser?.id ?? '';
+        if (creatorId) {
+          this.loadCreatorPuzzles(creatorId);
+        } else {
+          this.creatorPuzzles.set([]);
+        }
       }
     });
-    // global Escape handler to close modal
-    window.addEventListener('keydown', this.deleteKeyHandler);
   }
-
-  // Edit/delete state
-  protected editId: string | null = null;
-  protected editDraft: Partial<PuzzleItem> | null = null;
-  protected deleteTarget: PuzzleItem | null = null;
-
-  // handler reference so we can remove listener
-  private deleteKeyHandler = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && this.deleteTarget) {
-      this.cancelDelete();
-    }
-  };
 
   isAdmin() {
     return this.auth.isAdmin();
   }
 
-  // removed refreshUsers() - use usersService.list() directly where needed
+  protected showAdminPassword() {
+    return this.adminPasswordVisible();
+  }
 
-  createUser() {
-    if (!this.newUserName) return;
-    this.usersService
-      .create({ userName: this.newUserName, email: this.newUserEmail })
-      .subscribe(() => {
-        this.usersService.list().subscribe((list) => this.users.set(list));
-        this.newUserName = '';
-        this.newUserEmail = '';
+  protected toggleAdminPassword() {
+    this.adminPasswordVisible.update((visible) => !visible);
+  }
+
+  protected resetAdminMessages() {
+    this.userFormError.set(null);
+    this.userFormMessage.set(null);
+  }
+
+  protected resetPuzzleMessages() {
+    this.puzzleFormError.set(null);
+    this.puzzleFormMessage.set(null);
+  }
+
+  protected refreshCreatorPuzzles() {
+    const creatorId = this.auth.user()?.id ?? '';
+    if (creatorId) {
+      this.loadCreatorPuzzles(creatorId, true);
+      this.loadAllPuzzles(true);
+    }
+  }
+
+  protected refreshAllPuzzles() {
+    this.loadAllPuzzles(true);
+  }
+
+  protected getCreatorName(creatorId?: string | null) {
+    if (!creatorId) {
+      return 'Unknown creator';
+    }
+
+    const lookup = this.creatorNames();
+    if (lookup[creatorId]) {
+      return lookup[creatorId];
+    }
+
+    const current = this.auth.user();
+    if (current?.id === creatorId) {
+      if (current.userName) {
+        this.setCreatorName(current.id, current.userName);
+      }
+      return 'You';
+    }
+
+    return 'Unknown creator';
+  }
+
+  protected deleteCreatorPuzzle(puzzle: PuzzleItem) {
+    if (!puzzle?.id || this.deletingPuzzleId()) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete puzzle "${puzzle.name}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    this.puzzleFormError.set(null);
+    this.puzzleFormMessage.set(null);
+    this.deletingPuzzleId.set(puzzle.id);
+
+    this.puzzlesService
+      .delete(puzzle.id)
+      .pipe(finalize(() => this.deletingPuzzleId.set(null)))
+      .subscribe({
+        next: () => {
+          this.creatorPuzzles.update((list) => list.filter((item) => item.id !== puzzle.id));
+          this.puzzleFormMessage.set(`Puzzle "${puzzle.name}" deleted.`);
+          this.loadAllPuzzles(true);
+        },
+        error: (err) => {
+          const errorText =
+            typeof err?.error === 'string' ? err.error : err?.message ?? 'Failed to delete puzzle.';
+          this.puzzleFormError.set(errorText);
+        },
       });
   }
 
-  removeUser(id: string) {
-    this.usersService
-      .remove(id)
-      .subscribe(() => this.usersService.list().subscribe((list) => this.users.set(list)));
+  protected openLightbox(image?: string | null) {
+    if (!image) {
+      return;
+    }
+    this.lightboxImage.set(image);
   }
 
-  refreshPuzzles() {
-    this.puzzlesService.list().subscribe((p) => this.puzzles.set(p));
+  protected closeLightbox() {
+    this.lightboxImage.set(null);
   }
 
-  // (create puzzle) use addPuzzle() directly
+  private refreshUsers() {
+    this.auth.getAllUsers().subscribe({
+      next: (list) => {
+        const normalized = (list ?? []).map((u) => ({
+          ...u,
+          roles: Array.isArray(u.roles)
+            ? u.roles
+            : typeof (u as any).roles === 'string'
+            ? (u as any).roles
+                .split(',')
+                .map((r: string) => r.trim())
+                .filter(Boolean)
+            : [],
+        }));
+        this.users.set(normalized);
+        normalized.forEach((user) => {
+          if (user.id && user.userName) {
+            this.setCreatorName(user.id, user.userName);
+          }
+        });
+      },
+      error: () => this.users.set([]),
+    });
+  }
+
+  private loadAllPuzzles(force = false) {
+    if (!force && this.allPuzzlesLoaded) {
+      return;
+    }
+
+    this.allPuzzlesLoading.set(true);
+    this.allPuzzlesError.set(null);
+
+    this.puzzlesService
+      .getAll()
+      .pipe(finalize(() => this.allPuzzlesLoading.set(false)))
+      .subscribe({
+        next: (list) => {
+          this.allPuzzles.set(list);
+          this.allPuzzlesLoaded = true;
+        },
+        error: (err) => {
+          const errorText =
+            typeof err?.error === 'string' ? err.error : err?.message ?? 'Failed to load puzzles.';
+          this.allPuzzlesError.set(errorText);
+          this.allPuzzles.set([]);
+          this.allPuzzlesLoaded = false;
+        },
+      });
+  }
+
+  private loadCreatorPuzzles(creatorId: string, force = false) {
+    if (!creatorId) {
+      this.creatorPuzzles.set([]);
+      this.creatorPuzzlesLoadedFor = null;
+      return;
+    }
+
+    if (!force && this.creatorPuzzlesLoadedFor === creatorId && this.creatorPuzzles().length > 0) {
+      return;
+    }
+
+    this.puzzlesLoading.set(true);
+    this.puzzlesError.set(null);
+
+    this.puzzlesService
+      .getByCreatorId(creatorId)
+      .pipe(finalize(() => this.puzzlesLoading.set(false)))
+      .subscribe({
+        next: (list) => {
+          this.creatorPuzzles.set(list);
+          this.creatorPuzzlesLoadedFor = creatorId;
+          const current = this.auth.user();
+          if (current?.id && current?.userName) {
+            this.setCreatorName(current.id, current.userName);
+          }
+        },
+        error: (err) => {
+          const errorText =
+            typeof err?.error === 'string' ? err.error : err?.message ?? 'Failed to load puzzles.';
+          this.puzzlesError.set(errorText);
+          this.creatorPuzzles.set([]);
+          this.creatorPuzzlesLoadedFor = null;
+        },
+      });
+  }
+
+  private setCreatorName(id: string, name: string) {
+    if (!id || !name) {
+      return;
+    }
+    this.creatorNames.update((current) => {
+      if (current[id] === name) {
+        return current;
+      }
+      return { ...current, [id]: name };
+    });
+  }
+
+  createUser() {
+    const name = this.newUserName.trim();
+    const password = this.newUserPassword.trim();
+    const role = this.newUserRole;
+    this.resetAdminMessages();
+    if (!name || !password || !role) {
+      this.userFormError.set('Name, password, and role are required.');
+      return;
+    }
+    if (!this.usernamePolicy.test(name)) {
+      this.userFormError.set('Username can only contain letters and digits without spaces.');
+      return;
+    }
+    if (!this.passwordPolicy.test(password)) {
+      this.userFormError.set(
+        'Password must be at least 8 characters and include uppercase, lowercase, number, and symbol.'
+      );
+      return;
+    }
+
+    this.creatingUser.set(true);
+    this.auth.register({ name, password, role }).subscribe({
+      next: () => {
+        this.userFormMessage.set('User created successfully.');
+        this.newUserName = '';
+        this.newUserPassword = '';
+        this.newUserRole = 'GAME_CREATOR';
+        this.adminPasswordVisible.set(false);
+        this.refreshUsers();
+        this.creatingUser.set(false);
+      },
+      error: (err) => {
+        const errorText =
+          typeof err?.error === 'string' ? err.error : err?.message ?? 'Failed to create user.';
+        this.userFormError.set(errorText);
+        this.creatingUser.set(false);
+      },
+    });
+  }
+
+  protected deleteUser(user: AdminUserSummary) {
+    if (!user?.id || this.deletingUserId()) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete user "${user.userName}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    this.userFormError.set(null);
+    this.userFormMessage.set(null);
+    this.deletingUserId.set(user.id);
+    this.auth.deleteUser(user.id).subscribe({
+      next: () => {
+        this.userFormMessage.set(`User ${user.userName} deleted.`);
+        this.refreshUsers();
+        this.deletingUserId.set(null);
+      },
+      error: (err: unknown) => {
+        let errorText = 'Failed to delete user.';
+        const anyErr = err as any;
+        if (typeof anyErr === 'string') {
+          errorText = anyErr;
+        } else if (anyErr?.error && typeof anyErr.error === 'string') {
+          errorText = anyErr.error;
+        } else if (anyErr?.message && typeof anyErr.message === 'string') {
+          errorText = anyErr.message;
+        }
+        this.userFormError.set(errorText);
+        this.deletingUserId.set(null);
+      },
+    });
+  }
 
   addPuzzle() {
-    // validate required fields
     const nameEmpty = !this.newPuzzleName || !this.newPuzzleName.trim();
     const solutionEmpty = !this.newPuzzleSolution || !this.newPuzzleSolution.trim();
     this.newPuzzleNameError = nameEmpty;
     this.newPuzzleSolutionError = solutionEmpty;
     if (nameEmpty || solutionEmpty) return;
-    const payload: Partial<PuzzleItem> = {
-      name: this.newPuzzleName.trim(),
-      solution: this.newPuzzleSolution.trim(),
-      difficultyLevel: this.newPuzzleDifficulty,
-      image: this.newPuzzleImageBase64,
-      createdBy: this.auth.user()?.userName,
-    };
 
-    this.puzzlesService.create(payload).subscribe(() => {
-      this.refreshPuzzles();
-      this.newPuzzleName = '';
-      this.newPuzzleSolution = '';
-      this.newPuzzleDifficulty = 'easy';
-      this.newPuzzleImageBase64 = undefined;
-      const el = document.getElementById('puzzle-image-input') as HTMLInputElement | null;
-      if (el) el.value = '';
-    });
-  }
+    this.puzzleFormError.set(null);
+    this.puzzleFormMessage.set(null);
+    this.puzzlesError.set(null);
 
-  startEdit(p: PuzzleItem) {
-    this.editId = p.id;
-    this.editDraft = { ...p };
-  }
+    const creatorId = this.auth.user()?.id ?? '';
+    if (!creatorId) {
+      this.puzzleFormError.set('Unable to determine creator. Please sign in again.');
+      return;
+    }
 
-  saveEdit() {
-    if (!this.editId || !this.editDraft) return;
-    this.puzzlesService.update(this.editId, this.editDraft!).subscribe(() => {
-      this.refreshPuzzles();
-      this.cancelEdit();
-    });
-  }
+    const imageMissing = !this.newPuzzleImageFile;
+    this.newPuzzleImageError = imageMissing;
+    if (imageMissing) {
+      return;
+    }
 
-  cancelEdit() {
-    this.editId = null;
-    this.editDraft = null;
-  }
+    const formData = new FormData();
+    formData.append('Name', this.newPuzzleName.trim());
+    formData.append('Solution', this.newPuzzleSolution.trim());
+    formData.append('DifficultyLevel', this.newPuzzleDifficulty);
+    formData.append('CreatorId', creatorId);
+    if (this.newPuzzleImageFile) {
+      formData.append('Image', this.newPuzzleImageFile, this.newPuzzleImageFile.name);
+    }
 
-  confirmDelete(p: PuzzleItem) {
-    this.deleteTarget = p;
-    // focus cancel button for accessibility
-    setTimeout(() => {
-      const el = document.getElementById('delete-cancel-btn') as HTMLButtonElement | null;
-      if (el) el.focus();
-    }, 0);
-  }
-
-  cancelDelete() {
-    this.deleteTarget = null;
-  }
-
-  doDelete() {
-    if (!this.deleteTarget) return;
-    const id = this.deleteTarget.id;
-    this.puzzlesService.remove(id).subscribe(() => {
-      this.deleteTarget = null;
-      this.refreshPuzzles();
-    });
-  }
-
-  ngOnDestroy(): void {
-    window.removeEventListener('keydown', this.deleteKeyHandler);
+    this.creatingPuzzle.set(true);
+    this.puzzlesService
+      .create(formData)
+      .pipe(
+        switchMap(() =>
+          this.puzzlesService.getByCreatorId(creatorId).pipe(
+            catchError(() => {
+              this.puzzlesError.set(
+                'Puzzle created but failed to refresh the list. Please reload the page.'
+              );
+              return of(null);
+            })
+          )
+        ),
+        finalize(() => this.creatingPuzzle.set(false))
+      )
+      .subscribe({
+        next: (list) => {
+          if (list) {
+            this.creatorPuzzles.set(list);
+            this.creatorPuzzlesLoadedFor = creatorId;
+            this.puzzlesError.set(null);
+          }
+          this.loadAllPuzzles(true);
+          this.puzzleFormMessage.set('Puzzle created successfully.');
+          this.newPuzzleName = '';
+          this.newPuzzleSolution = '';
+          this.newPuzzleDifficulty = 'easy';
+          this.newPuzzleImageFile = null;
+          this.newPuzzleImageError = false;
+          this.newPuzzleNameError = false;
+          this.newPuzzleSolutionError = false;
+          const el = document.getElementById('puzzle-image-input') as HTMLInputElement | null;
+          if (el) el.value = '';
+        },
+        error: (err) => {
+          const errorText =
+            typeof err?.error === 'string' ? err.error : err?.message ?? 'Failed to create puzzle.';
+          this.puzzleFormError.set(errorText);
+        },
+      });
   }
 
   onImageSelected(ev: Event) {
     const input = ev.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-    const file = input.files[0];
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string | ArrayBuffer | null;
-      if (typeof result === 'string') this.newPuzzleImageBase64 = result;
-    };
-    reader.readAsDataURL(file);
+    const file = input.files && input.files.length > 0 ? input.files[0] : null;
+    this.resetPuzzleMessages();
+    this.newPuzzleImageFile = file;
+    if (file) {
+      this.newPuzzleImageError = false;
+    }
   }
 
   getUserCount() {
-    return this.users()?.length ?? 0;
-  }
-
-  getMyPuzzles() {
-    const me = this.auth.user()?.userName;
-    if (!me) return 0;
-    return this.puzzles()?.filter((p) => p.createdBy === me).length ?? 0;
-  }
-
-  getPuzzleCount() {
-    return this.puzzles()?.length ?? 0;
+    return this.users().length;
   }
 }

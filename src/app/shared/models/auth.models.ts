@@ -18,10 +18,9 @@ export interface UserInfo {
 }
 
 export interface RegisterRequest {
-  email: string;
+  name: string;
   password: string;
-  confirmPassword: string;
-  userName: string;
+  role: string;
 }
 
 // API response wrapper
@@ -34,6 +33,12 @@ export interface ApiResponse<T = any> {
 
 // User roles from backend - simplified for puzzle CRUD only
 export type UserRole = 'PUZZLE_CREATOR' | 'Admin';
+
+export interface AdminUserSummary {
+  id: string;
+  userName: string;
+  roles: string[];
+}
 
 // Authentication state
 export interface AuthState {

@@ -1,11 +1,12 @@
-import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 export interface PuzzleItem {
   id: string;
-  // Matches backend: Name, Image (bytes/base64), Solution, DifficultyLevel
   name: string;
-  image?: string; // storing base64 string for demo
+  image?: string;
   solution: string;
   difficultyLevel: 'hard' | 'medium' | 'easy';
   createdBy?: string;
@@ -13,40 +14,90 @@ export interface PuzzleItem {
 
 @Injectable({ providedIn: 'root' })
 export class PuzzlesService {
-  private puzzles: PuzzleItem[] = [];
+  private http = inject(HttpClient);
+  private readonly baseUrl = 'http://172.20.10.3:5000/api/Puzzels';
 
-  list() {
-    return of(this.puzzles.slice());
+  getAll(): Observable<PuzzleItem[]> {
+    return this.http
+      .get<BackendPuzzle[] | string>(`${this.baseUrl}/GetAllPuzzles`)
+      .pipe(map((response) => this.normalizeList(response)));
   }
 
-  create(payload: Partial<PuzzleItem>) {
-    const item: PuzzleItem = {
-      id: String(Date.now()),
-      name: payload.name ?? 'Untitled',
-      image: payload.image,
-      solution: payload.solution ?? '',
-      difficultyLevel: (payload.difficultyLevel as PuzzleItem['difficultyLevel']) ?? 'easy',
-      createdBy: payload.createdBy ?? 'unknown',
+  getByCreatorId(creatorId: string): Observable<PuzzleItem[]> {
+    if (!creatorId) {
+      return of([]);
+    }
+    return this.http
+      .get<BackendPuzzle[] | string>(
+        `${this.baseUrl}/GetPuzzelsByCreatorId/${encodeURIComponent(creatorId)}`
+      )
+      .pipe(map((response) => this.normalizeList(response)));
+  }
+
+  create(formData: FormData): Observable<string> {
+    return this.http.post(`${this.baseUrl}/CreatePuzzle`, formData, {
+      responseType: 'text',
+    });
+  }
+
+  delete(id: string | number): Observable<string> {
+    return this.http.delete(`${this.baseUrl}/DeletePuzzle/${encodeURIComponent(id)}`, {
+      responseType: 'text',
+    });
+  }
+
+  private normalizeList(response: BackendPuzzle[] | string | null | undefined): PuzzleItem[] {
+    if (!response) return [];
+    if (typeof response === 'string') return [];
+    return response.map((entry) => this.normalizePuzzle(entry));
+  }
+
+  private normalizePuzzle(entry: BackendPuzzle): PuzzleItem {
+    const raw: any = entry ?? {};
+    const id = raw.id ?? raw.Id ?? '';
+    const name = raw.name ?? raw.Name ?? '';
+    const solution = raw.solution ?? raw.Solution ?? '';
+    const difficulty = (raw.difficultyLevel ?? raw.DifficultyLevel ?? 'easy')
+      .toString()
+      .toLowerCase();
+    const creatorId = raw.creatorId ?? raw.CreatorId ?? undefined;
+    const imageSource = this.toImageDataUrl(raw.image ?? raw.Image);
+
+    return {
+      id: String(id),
+      name,
+      solution,
+      difficultyLevel: this.ensureDifficulty(difficulty),
+      image: imageSource,
+      createdBy: creatorId,
     };
-    this.puzzles.push(item);
-    return of(item);
   }
 
-  update(id: string, payload: Partial<PuzzleItem>): Observable<PuzzleItem | null> {
-    const idx = this.puzzles.findIndex((p) => p.id === id);
-    if (idx === -1) return of(null);
-    const existing = this.puzzles[idx];
-    const updated: PuzzleItem = {
-      ...existing,
-      ...payload,
-      id: existing.id,
-    };
-    this.puzzles[idx] = updated;
-    return of(updated);
+  private toImageDataUrl(image?: string | null): string | undefined {
+    if (!image) return undefined;
+    if (image.startsWith('data:')) return image;
+    return `data:image/png;base64,${image}`;
   }
 
-  remove(id: string) {
-    this.puzzles = this.puzzles.filter((p) => p.id !== id);
-    return of(true);
+  private ensureDifficulty(value: string): PuzzleItem['difficultyLevel'] {
+    if (value === 'hard' || value === 'medium' || value === 'easy') {
+      return value;
+    }
+    return 'easy';
   }
 }
+
+type BackendPuzzle = {
+  id?: number | string;
+  Id?: number | string;
+  name?: string;
+  Name?: string;
+  image?: string;
+  Image?: string;
+  solution?: string;
+  Solution?: string;
+  difficultyLevel?: string;
+  DifficultyLevel?: string;
+  creatorId?: string;
+  CreatorId?: string;
+};
