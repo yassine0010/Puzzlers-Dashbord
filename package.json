@@ -43,6 +43,7 @@
     "@angular/cli": "^20.3.3",
     "@angular/compiler-cli": "^20.3.3",
     "@angular/platform-browser-dynamic": "^20.3.3",
+    "@netlify/functions": "^2.8.2",
     "@types/express": "^5.0.1",
     "@types/jasmine": "~5.1.0",
     "@types/jest": "^30.0.0",
