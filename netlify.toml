@@ -1,6 +1,6 @@
 [build]
   command = "npm run build"
-  publish = "dist/DashBordPuzzlers/browser"
+  publish = "dist/DashBordPuzzlers"
 
 [[plugins]]
   package = "@netlify/angular-runtime"
