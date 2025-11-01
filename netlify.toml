@@ -4,11 +4,3 @@
 
 [[plugins]]
   package = "@netlify/angular-runtime"
-
-[functions]
-  node_bundler = "esbuild"
-
-[[redirects]]
-  from = "/*"
-  to = "/.netlify/builders/render"
-  status = 200
