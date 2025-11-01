@@ -1,4 +1,4 @@
-import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
+import type { Handler, HandlerContext, HandlerEvent } from '@netlify/functions';
 
 const API_BASE = 'http://20.199.64.218:5000';
 
@@ -6,10 +6,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
   // Get the path after /api-proxy
   const path = event.path.replace('/.netlify/functions/api-proxy', '');
   const queryString = event.rawQuery ? `?${event.rawQuery}` : '';
-  
+
   // Build the target URL
   const targetUrl = `${API_BASE}${path}${queryString}`;
-  
+
   console.log(`Proxying ${event.httpMethod} request to: ${targetUrl}`);
 
   // Handle CORS preflight
@@ -17,6 +17,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     return {
       statusCode: 200,
       headers: {
+        'Content-Type': 'text/plain',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -68,10 +69,12 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: 'Failed to proxy request',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       }),
     };
   }
