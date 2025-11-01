@@ -4,7 +4,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "ng build && npm run postbuild",
+    "postbuild": "node -e \"const fs=require('fs'); const src='dist/DashBordPuzzlers/browser/index.csr.html'; const dest='dist/DashBordPuzzlers/browser/index.html'; if(fs.existsSync(src)) fs.copyFileSync(src,dest);\"",
     "watch": "ng build --watch --configuration development",
     "test": "jest",
     "serve:ssr:DashBordPuzzlers": "node dist/DashBordPuzzlers/server/server.mjs"
