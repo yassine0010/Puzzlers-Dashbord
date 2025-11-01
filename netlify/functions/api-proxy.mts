@@ -1,22 +1,22 @@
-import type { Context } from "@netlify/functions";
+import type { Context } from '@netlify/functions';
 
-const API_BASE = "http://20.199.64.218:5000";
+const API_BASE = 'http://20.199.64.218:5000';
 
 export default async (req: Request, context: Context) => {
   // Get the path after /api/
   const url = new URL(req.url);
-  const path = url.pathname.replace("/.netlify/functions/api-proxy", "");
+  const path = url.pathname.replace('/.netlify/functions/api-proxy', '');
   const queryString = url.search;
-  
+
   // Build the target URL
   const targetUrl = `${API_BASE}${path}${queryString}`;
-  
+
   console.log(`Proxying request to: ${targetUrl}`);
 
   try {
     // Forward the request to your HTTP API
     const headers: Record<string, string> = {};
-    
+
     // Copy relevant headers
     req.headers.forEach((value, key) => {
       if (!['host', 'connection', 'content-length'].includes(key.toLowerCase())) {

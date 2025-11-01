@@ -47,7 +47,10 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "define": {
+                "import.meta.env.NG_BUILD_ENV": "\"production\""
+              }
             },
             "development": {
               "optimization": false,
