@@ -4,5 +4,5 @@ import { isDevMode } from '@angular/core';
 
 export const environment = {
   production: !isDevMode(),
-  apiUrl: '/.netlify/functions/api-proxy/api',
+  apiUrl: '/api',
 };
