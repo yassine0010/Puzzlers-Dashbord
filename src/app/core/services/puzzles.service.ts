@@ -15,7 +15,7 @@ export interface PuzzleItem {
 @Injectable({ providedIn: 'root' })
 export class PuzzlesService {
   private http = inject(HttpClient);
-  private readonly baseUrl = 'http://172.20.10.3:5000/api/Puzzels';
+  private readonly baseUrl = 'http://20.199.64.218:5000/api/Puzzels';
 
   getAll(): Observable<PuzzleItem[]> {
     return this.http

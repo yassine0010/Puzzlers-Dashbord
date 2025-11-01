@@ -13,7 +13,7 @@ import {
 } from '../../shared/models/auth.models';
 
 // Backend API base (use your API host)
-const API_BASE = 'http://172.20.10.3:5000';
+const API_BASE = 'http://20.199.64.218:5000';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
