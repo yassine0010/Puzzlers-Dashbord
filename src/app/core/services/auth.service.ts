@@ -3,6 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 import {
   AdminUserSummary,
   AuthState,
@@ -13,7 +14,7 @@ import {
 } from '../../shared/models/auth.models';
 
 // Backend API base (use your API host)
-const API_BASE = 'http://20.199.64.218:5000';
+const API_BASE = environment.apiUrl.replace('/api', '');
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
