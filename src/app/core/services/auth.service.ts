@@ -3,6 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 import {
   AdminUserSummary,
   AuthState,
@@ -11,7 +12,6 @@ import {
   UserInfo,
   UserRole,
 } from '../../shared/models/auth.models';
-import { environment } from '../../../environments/environment';
 
 // Backend API base (use environment configuration)
 const API_BASE = environment.apiUrl;
