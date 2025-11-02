@@ -1,5 +1,4 @@
 ﻿{
-  "version": 2,
   "buildCommand": "cd DashBordPuzzlers && npm run build",
   "outputDirectory": "DashBordPuzzlers/dist/DashBordPuzzlers/browser",
   "installCommand": "cd DashBordPuzzlers && npm install",
