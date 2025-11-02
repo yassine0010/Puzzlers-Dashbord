@@ -11,9 +11,10 @@ import {
   UserInfo,
   UserRole,
 } from '../../shared/models/auth.models';
+import { environment } from '../../../environments/environment';
 
-// Backend API base (use your API host)
-const API_BASE = 'http://20.199.64.218:5000';
+// Backend API base (use environment configuration)
+const API_BASE = environment.apiUrl;
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
