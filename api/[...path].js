@@ -14,9 +14,19 @@ export default async function handler(req, res) {
       body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
     });
 
-    const data = await response.json();
-
-    res.status(response.status).json(data);
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } else {
+      const text = await response.text();
+      res.status(response.status).json({ 
+        error: 'Non-JSON response', 
+        message: text,
+        status: response.status 
+      });
+    }
   } catch (error) {
     res.status(500).json({ error: 'Proxy error', message: error.message });
   }
