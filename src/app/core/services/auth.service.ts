@@ -219,16 +219,10 @@ export class AuthService {
       const payload = parts[1];
       // Add padding if needed
       const padded = payload.padEnd(Math.ceil(payload.length / 4) * 4, '=');
-      let decoded = '';
-      if (typeof (globalThis as any).atob === 'function') {
-        decoded = (globalThis as any).atob(padded.replace(/-/g, '+').replace(/_/g, '/'));
-      } else if (typeof Buffer !== 'undefined') {
-        decoded = Buffer.from(padded.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString(
-          'utf8'
-        );
-      } else {
-        return {};
-      }
+      
+      // Browser environment - use atob
+      const decoded = atob(padded.replace(/-/g, '+').replace(/_/g, '/'));
+      
       return JSON.parse(decoded);
     } catch (e) {
       return {};

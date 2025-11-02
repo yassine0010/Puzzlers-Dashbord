@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = "dist/DashBordPuzzlers/browser"
+
+# Ensure a compatible Node.js runtime
+[build.environment]
+  NODE_VERSION = "20"
+
+# Use the Angular SSR runtime plugin from the repo (matches UI plugin)
+[[plugins]]
+  package = "@netlify/angular-runtime"
