@@ -1,5 +1,3 @@
-import { Readable } from 'stream';
-
 export const config = {
   api: {
     bodyParser: false,
