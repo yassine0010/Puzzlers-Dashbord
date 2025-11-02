@@ -15,16 +15,16 @@ export default async function handler(req, res) {
     });
 
     const contentType = response.headers.get('content-type');
-    
+
     if (contentType && contentType.includes('application/json')) {
       const data = await response.json();
       res.status(response.status).json(data);
     } else {
       const text = await response.text();
-      res.status(response.status).json({ 
-        error: 'Non-JSON response', 
+      res.status(response.status).json({
+        error: 'Non-JSON response',
         message: text,
-        status: response.status 
+        status: response.status,
       });
     }
   } catch (error) {
