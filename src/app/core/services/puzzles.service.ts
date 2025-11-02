@@ -11,6 +11,7 @@ export interface PuzzleItem {
   solution: string;
   difficultyLevel: 'hard' | 'medium' | 'easy';
   createdBy?: string;
+  creatorName?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -62,6 +63,7 @@ export class PuzzlesService {
       .toString()
       .toLowerCase();
     const creatorId = raw.creatorId ?? raw.CreatorId ?? undefined;
+    const creatorName = raw.creatorName ?? raw.CreatorName ?? raw.userName ?? raw.UserName ?? undefined;
     const imageSource = this.toImageDataUrl(raw.image ?? raw.Image);
 
     return {
@@ -71,6 +73,7 @@ export class PuzzlesService {
       difficultyLevel: this.ensureDifficulty(difficulty),
       image: imageSource,
       createdBy: creatorId,
+      creatorName: creatorName,
     };
   }
 
@@ -101,4 +104,8 @@ type BackendPuzzle = {
   DifficultyLevel?: string;
   creatorId?: string;
   CreatorId?: string;
+  creatorName?: string;
+  CreatorName?: string;
+  userName?: string;
+  UserName?: string;
 };

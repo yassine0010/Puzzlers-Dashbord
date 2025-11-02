@@ -196,7 +196,7 @@ import { AdminUserSummary } from '../../shared/models/auth.models';
                     <div class="muted">
                       Difficulty: {{ puzzle.difficultyLevel | titlecase }}
                       <span *ngIf="puzzle.createdBy">
-                        • Creator: {{ getCreatorName(puzzle.createdBy) }}
+                        • Creator: {{ getCreatorName(puzzle) }}
                       </span>
                     </div>
                     <div class="muted">Solution: {{ puzzle.solution }}</div>
@@ -840,11 +840,28 @@ export class DashboardComponent {
     this.loadAllPuzzles(true);
   }
 
-  protected getCreatorName(creatorId?: string | null) {
+  protected getCreatorName(puzzle: PuzzleItem | string | null | undefined): string {
+    // If puzzle object passed, check for creator name first
+    if (puzzle && typeof puzzle === 'object') {
+      if (puzzle.creatorName) {
+        return puzzle.creatorName;
+      }
+      const creatorId = puzzle.createdBy;
+      if (!creatorId) {
+        return 'Unknown creator';
+      }
+      return this.lookupCreatorName(creatorId);
+    }
+    
+    // If just an ID string passed
+    const creatorId = puzzle;
     if (!creatorId) {
       return 'Unknown creator';
     }
+    return this.lookupCreatorName(creatorId);
+  }
 
+  private lookupCreatorName(creatorId: string): string {
     const lookup = this.creatorNames();
     if (lookup[creatorId]) {
       return lookup[creatorId];
