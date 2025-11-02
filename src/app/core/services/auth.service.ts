@@ -93,7 +93,7 @@ export class AuthService {
     };
 
     return this.http
-      .post<{ token: string; expiration: string }>(`${API_BASE}/api/Account/Login`, payload)
+      .post<{ token: string; expiration: string }>(`${API_BASE}/Account/Login`, payload)
       .pipe(
         tap((res) => {
           if (!res || !res.token) {
@@ -182,14 +182,14 @@ export class AuthService {
       Password: payload.password,
       Role: payload.role,
     };
-    return this.http.post(`${API_BASE}/api/Account/Register`, body, {
+    return this.http.post(`${API_BASE}/Account/Register`, body, {
       responseType: 'text',
     });
   }
 
   getAllUsers() {
     return this.http
-      .get<Array<AdminUserSummary & { Roles?: string[] }>>(`${API_BASE}/api/Account/GetAllUsers`)
+      .get<Array<AdminUserSummary & { Roles?: string[] }>>(`${API_BASE}/Account/GetAllUsers`)
       .pipe(
         map((list) =>
           (list ?? []).map((user) => ({
@@ -202,7 +202,7 @@ export class AuthService {
   }
 
   deleteUser(id: string) {
-    return this.http.delete(`${API_BASE}/api/Account/DeleteUser/${encodeURIComponent(id)}`, {
+    return this.http.delete(`${API_BASE}/Account/DeleteUser/${encodeURIComponent(id)}`, {
       responseType: 'text',
     });
   }

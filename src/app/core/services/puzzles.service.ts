@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 
 export interface PuzzleItem {
   id: string;
@@ -15,7 +16,7 @@ export interface PuzzleItem {
 @Injectable({ providedIn: 'root' })
 export class PuzzlesService {
   private http = inject(HttpClient);
-  private readonly baseUrl = 'http://20.199.64.218:5000/api/Puzzels';
+  private readonly baseUrl = `${environment.apiUrl}/Puzzels`;
 
   getAll(): Observable<PuzzleItem[]> {
     return this.http
