@@ -1,0 +1,22 @@
+﻿{
+  "version": 2,
+  "buildCommand": "cd DashBordPuzzlers && npm run build",
+  "outputDirectory": "DashBordPuzzlers/dist/DashBordPuzzlers/browser",
+  "installCommand": "cd DashBordPuzzlers && npm install",
+  "functions": {
+    "DashBordPuzzlers/api/[...path].js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/DashBordPuzzlers/api/[...path].js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
