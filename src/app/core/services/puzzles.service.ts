@@ -56,6 +56,10 @@ export class PuzzlesService {
 
   private normalizePuzzle(entry: BackendPuzzle): PuzzleItem {
     const raw: any = entry ?? {};
+    
+    // Debug: log the raw entry to see what the backend is sending
+    console.log('Backend puzzle data:', raw);
+    
     const id = raw.id ?? raw.Id ?? '';
     const name = raw.name ?? raw.Name ?? '';
     const solution = raw.solution ?? raw.Solution ?? '';
@@ -63,8 +67,11 @@ export class PuzzlesService {
       .toString()
       .toLowerCase();
     const creatorId = raw.creatorId ?? raw.CreatorId ?? undefined;
-    const creatorName = raw.creatorName ?? raw.CreatorName ?? raw.userName ?? raw.UserName ?? undefined;
+    const creatorName =
+      raw.creatorName ?? raw.CreatorName ?? raw.userName ?? raw.UserName ?? undefined;
     const imageSource = this.toImageDataUrl(raw.image ?? raw.Image);
+    
+    console.log('Extracted creator info - ID:', creatorId, 'Name:', creatorName);
 
     return {
       id: String(id),

@@ -852,7 +852,7 @@ export class DashboardComponent {
       }
       return this.lookupCreatorName(creatorId);
     }
-    
+
     // If just an ID string passed
     const creatorId = puzzle;
     if (!creatorId) {
