@@ -858,7 +858,8 @@ export class DashboardComponent {
       return 'You';
     }
 
-    return 'Unknown creator';
+    // If we have a creator ID but no name, show the ID
+    return creatorId || 'Unknown creator';
   }
 
   protected deleteCreatorPuzzle(puzzle: PuzzleItem) {
