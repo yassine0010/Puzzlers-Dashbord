@@ -219,10 +219,10 @@ export class AuthService {
       const payload = parts[1];
       // Add padding if needed
       const padded = payload.padEnd(Math.ceil(payload.length / 4) * 4, '=');
-      
+
       // Browser environment - use atob
       const decoded = atob(padded.replace(/-/g, '+').replace(/_/g, '/'));
-      
+
       return JSON.parse(decoded);
     } catch (e) {
       return {};
