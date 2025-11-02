@@ -1,10 +1,7 @@
 ﻿{
-  "buildCommand": "cd DashBordPuzzlers && npm run build",
-  "outputDirectory": "DashBordPuzzlers/dist/DashBordPuzzlers/browser",
-  "installCommand": "cd DashBordPuzzlers && npm install",
   "rewrites": [
     {
-      "source": "/api/:path*",
+      "source": "/api/(.*)",
       "destination": "/DashBordPuzzlers/api/[...path]"
     },
     {
